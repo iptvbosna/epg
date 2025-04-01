@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <channels>
-  <channel site="mojmaxtv.hrvatskitelekom.hr" lang="hr" xmltv_id="" site_id="274913832105##18ef91ee3d2952fdd1578e188319c8f7.000001.PNG">HRT 1</channel>
-  <channel site="mojmaxtv.hrvatskitelekom.hr" lang="hr" xmltv_id="" site_id="274913832109##cb48bba7adbd95342e7f05bb12007041.000003.PNG">RTL</channel>
+  <channel site="mojmaxtv.hrvatskitelekom.hr" lang="hr" xmltv_id="" site_id="274913832105">HRT 1</channel>
+  <channel site="mojmaxtv.hrvatskitelekom.hr" lang="hr" xmltv_id="" site_id="274913832109">RTL</channel>
   <channel site="mojmaxtv.hrvatskitelekom.hr" lang="hr" xmltv_id="" site_id="274913832116">CMC - Croatian Music Channel</channel>
   <channel site="mojmaxtv.hrvatskitelekom.hr" lang="hr" xmltv_id="" site_id="274914856086">Nova TV</channel>
   <channel site="mojmaxtv.hrvatskitelekom.hr" lang="hr" xmltv_id="" site_id="274914856088">Arenasport 1</channel>
