@@ -91,7 +91,7 @@
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Good.Times.hr">Good Times</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#GP1.HD.hr">GP1 HD</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Happy.TV.hr">Happy TV</channel>
-  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.PLUS.hr">Hayat PLUS</channel>
+  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.2.hr">Hayat PLUS</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#HBO.2.HD.hr">HBO 2 HD</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#HBO.3.HD.hr">HBO 3 HD</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#HBO.HD.hr">HBO HD</channel>
@@ -213,5 +213,8 @@
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#ZDF.HD.hr">ZDF HD</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Zdrava.TV-7.hr">Zdrava TV-7</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#ZZ.TV.hr">ZZ TV</channel>
-  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.hr">Hayat TV</channel>
+  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.TV.hr">Hayat TV</channel>
+  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.TV.hr">Hayat TV</channel>
+  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.TV.Love.Box.hr">Hayat Love Box TV</channel>
+  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.TV.Stil.i.Zivot.hr">Hayat Stil i Zivot TV</channel>
 </channels>
