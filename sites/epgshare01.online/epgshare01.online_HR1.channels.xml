@@ -213,4 +213,5 @@
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#ZDF.HD.hr">ZDF HD</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Zdrava.TV-7.hr">Zdrava TV-7</channel>
   <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#ZZ.TV.hr">ZZ TV</channel>
+  <channel site="epgshare01.online" lang="hr" xmltv_id="" site_id="HR1#Hayat.hr">Hayat TV</channel>
 </channels>
