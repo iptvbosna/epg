@@ -1,7 +1,7 @@
-import chalk from 'chalk'
-import { program } from 'commander'
-import { Storage, File } from '@freearhey/core'
 import { XmlDocument, XsdValidator, XmlValidateError, ErrorDetail } from 'libxml2-wasm'
+import { Storage, File } from '@freearhey/storage-js'
+import { program } from 'commander'
+import chalk from 'chalk'
 
 const xsd = `<?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
@@ -19,6 +19,7 @@ const xsd = `<?xml version="1.0" encoding="UTF-8"?>
       <xs:attribute use="required" ref="site_id"/>
       <xs:attribute name="xmltv_id" use="required" type="xs:string"/>
       <xs:attribute name="logo" type="xs:string"/>
+      <xs:attribute name="lcn" type="xs:string"/>
     </xs:complexType>
   </xs:element>
   <xs:attribute name="site">
@@ -44,7 +45,7 @@ const xsd = `<?xml version="1.0" encoding="UTF-8"?>
   </xs:attribute>
 </xs:schema>`
 
-program.argument('[filepath]', 'Path to *.channels.xml files to check').parse(process.argv)
+program.argument('[filepath...]', 'Path to *.channels.xml files to check').parse(process.argv)
 
 async function main() {
   const storage = new Storage()
