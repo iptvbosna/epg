@@ -1,9 +1,9 @@
+const _ = require('lodash')
 const doFetch = require('@ntlab/sfetch')
 const dayjs = require('dayjs')
 const utc = require('dayjs/plugin/utc')
 const timezone = require('dayjs/plugin/timezone')
 const customParseFormat = require('dayjs/plugin/customParseFormat')
-const sortBy = require('lodash.sortby')
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -12,12 +12,13 @@ dayjs.extend(customParseFormat)
 module.exports = {
   site: 'mtel.ba',
   days: 2,
-  
   url({ channel, date }) {
     const [platform] = channel.site_id.split('#')
-    return `https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/epg?platform=tv-${platform}&currentPage=0&pageSize=1000&date=${date.format('YYYY-MM-DD')}`
-  },
 
+    return `https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/epg?platform=tv-${platform}&currentPage=0&pageSize=1000&date=${date.format(
+      'YYYY-MM-DD'
+    )}`
+  },
   request: {
     timeout: 20000, // 20 seconds
     maxContentLength: 10000000, // 10 Mb
@@ -26,11 +27,11 @@ module.exports = {
       ttl: 24 * 60 * 60 * 1000 // 1 day
     }
   },
-
   parser({ content, channel }) {
     let programs = []
     const items = parseItems(content, channel)
     items.forEach(item => {
+      if (item.title === 'Nema informacija o programu') return
       programs.push({
         title: item.title,
         description: item.description,
@@ -40,9 +41,9 @@ module.exports = {
         stop: parseStop(item)
       })
     })
+
     return programs
   },
-
   async channels({ platform = 'msat' }) {
     const platforms = {
       msat: 'https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/search?pageSize=100&currentPage=<CURRENT_PAGE>&query=:relevantno:tv-kategorija:tv-msat',
@@ -99,12 +100,10 @@ function parseItems(content, channel) {
     const data = JSON.parse(content)
     if (!data || !Array.isArray(data.products)) return []
     const [, channelId] = channel.site_id.split('#')
-    const channelData = data.products.find(c => c.code === channelId)
+    const channelData = data.products.find(channel => channel.code === channelId)
     if (!channelData || !Array.isArray(channelData.programs)) return []
 
-    // filter out programs without info
-    channelData.programs = channelData.programs.filter(p => !p.title.includes('Nema informacija o programu'))
-    return sortBy(channelData.programs, p => parseStart(p).valueOf())
+    return _.sortBy(channelData.programs, p => parseStart(p).valueOf())
   } catch {
     return []
   }
