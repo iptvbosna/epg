@@ -12,13 +12,12 @@ dayjs.extend(customParseFormat)
 module.exports = {
   site: 'mtel.ba',
   days: 2,
+  
   url({ channel, date }) {
     const [platform] = channel.site_id.split('#')
-
-    return `https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/epg?platform=tv-${platform}&pageSize=999&date=${date.format(
-      'YYYY-MM-DD'
-    )}`
+    return `https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/epg?platform=tv-${platform}&currentPage=0&pageSize=1000&date=${date.format('YYYY-MM-DD')}`
   },
+
   request: {
     timeout: 20000, // 20 seconds
     maxContentLength: 10000000, // 10 Mb
@@ -27,6 +26,7 @@ module.exports = {
       ttl: 24 * 60 * 60 * 1000 // 1 day
     }
   },
+
   parser({ content, channel }) {
     let programs = []
     const items = parseItems(content, channel)
@@ -40,19 +40,19 @@ module.exports = {
         stop: parseStop(item)
       })
     })
-
     return programs
   },
+
   async channels({ platform = 'msat' }) {
     const platforms = {
-      msat: 'https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/search?pageSize=999&query=:relevantno:tv-kategorija:tv-msat',
-      iptv: 'https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/search?pageSize=999&query=:relevantno:tv-kategorija:tv-iptv'
+      msat: 'https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/search?pageSize=100&currentPage=<CURRENT_PAGE>&query=:relevantno:tv-kategorija:tv-msat',
+      iptv: 'https://mtel.ba/hybris/ecommerce/b2c/v1/products/channels/search?pageSize=100&currentPage=<CURRENT_PAGE>&query=:relevantno:tv-kategorija:tv-iptv:tv-iptv-paket:Svi+kanali'
     }
 
     const queue = [
       {
         platform,
-        url: platforms[platform]
+        url: platforms[platform].replace('<CURRENT_PAGE>', 0)
       }
     ]
 
@@ -61,7 +61,7 @@ module.exports = {
       if (data && data.pagination.currentPage < data.pagination.totalPages) {
         queue.push({
           platform: req.platform,
-          url: platforms[req.platform]
+          url: platforms[req.platform].replace('<CURRENT_PAGE>', ++data.pagination.currentPage)
         })
       }
 
@@ -99,9 +99,10 @@ function parseItems(content, channel) {
     const data = JSON.parse(content)
     if (!data || !Array.isArray(data.products)) return []
     const [, channelId] = channel.site_id.split('#')
-    const channelData = data.products.find(channel => channel.code === channelId)
+    const channelData = data.products.find(c => c.code === channelId)
     if (!channelData || !Array.isArray(channelData.programs)) return []
-    // filter out programs that have the sentence "no program information available"
+
+    // filter out programs without info
     channelData.programs = channelData.programs.filter(p => !p.title.includes('Nema informacija o programu'))
     return sortBy(channelData.programs, p => parseStart(p).valueOf())
   } catch {
