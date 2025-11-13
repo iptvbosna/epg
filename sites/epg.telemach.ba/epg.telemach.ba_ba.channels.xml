@@ -127,7 +127,6 @@
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1599">VOX (BIH)</channel>
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1600">Pro7 (BIH)</channel>
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1601">Pink Crime &amp; Mystery (BIH)</channel>
-  <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1603">Nova Max (BIH)</channel>
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1604">Nova Series (BIH)</channel>
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1605">MTV 00s (BIH)</channel>
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1606">Rai Uno (BIH)</channel>
@@ -256,4 +255,5 @@
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="1949">Viasat Kino HD (BIH)</channel>
   <channel site="epg.telemach.ba" lang="hr" xmltv_id="" site_id="2052">Eurosport 4K (BIH)</channel>
 </channels>
+
 
