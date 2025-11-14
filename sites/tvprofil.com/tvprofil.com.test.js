@@ -22,11 +22,11 @@ it('can generate valid url', () => {
   // Provjeravamo da li je enkodiran target URL
   expect(generatedUrl).toContain('url=https%3A%2F%2Ftvprofil.com')
   
-  // Provjeravamo da li sadrži potrebne parametre
-  expect(generatedUrl).toContain('datum=2025-07-29')
-  expect(generatedUrl).toContain('kanal=24kitchen-bg')
-  expect(generatedUrl).toContain('callback=tvprogramit48')
-  expect(generatedUrl).toContain('b48=827670')
+  // Provjeravamo da li sadrži potrebne parametre (enkodovane u URL-u)
+  expect(generatedUrl).toContain('datum%3D2025-07-29')
+  expect(generatedUrl).toContain('kanal%3D24kitchen-bg')
+  expect(generatedUrl).toContain('callback%3Dtvprogramit48')
+  expect(generatedUrl).toContain('b48%3D827670')
 })
 
 it('can generate valid request headers', () => {
