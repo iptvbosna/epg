@@ -1,5 +1,7 @@
 const axios = require('axios')
 const dayjs = require('dayjs')
+const HttpsProxyAgent = require('https-proxy-agent')
+
 module.exports = {
   site: 'mts.rs',
   days: 2,
@@ -9,7 +11,9 @@ module.exports = {
     )}&pageSize=10000`
   },
   request: {
-    maxContentLength: 50000000 // 50 Mb
+    maxContentLength: 50000000, // 50 Mb
+    httpsAgent: new HttpsProxyAgent('http://proxy.toolip.io:31112'), // BESPLATNI PROXY
+    timeout: 30000
   },
   parser({ content, channel }) {
     const items = parseItems(content, channel)
@@ -26,7 +30,7 @@ module.exports = {
   },
   async channels() {
     const data = await axios
-      .get(module.exports.url({ date: dayjs() }))
+      .get(module.exports.url({ date: dayjs() }), module.exports.request)
       .then(r => r.data)
       .catch(console.error)
     return data.products.map(channel => ({
@@ -36,6 +40,7 @@ module.exports = {
     }))
   }
 }
+
 function parseItems(content, channel) {
   try {
     const data = JSON.parse(content)
@@ -47,4 +52,3 @@ function parseItems(content, channel) {
     return []
   }
 }
-
