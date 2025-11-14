@@ -1,110 +1,48 @@
-const cheerio = require('cheerio')
+const { parser, url, request } = require('./tvprofil.com.config.js')
+const fs = require('fs')
+const path = require('path')
 const dayjs = require('dayjs')
+const utc = require('dayjs/plugin/utc')
+const customParseFormat = require('dayjs/plugin/customParseFormat')
+dayjs.extend(customParseFormat)
+dayjs.extend(utc)
 
-const WORKER_URL = 'https://sehara-tvprofil.seharavip15.workers.dev/'
-
-module.exports = {
-  site: 'tvprofil.com',
-  days: 2,
-
-  // --- Direktni URL za testove
-  url: function ({ channel, date }) {
-    const parts = channel.site_id.split('#')
-    const query = buildQuery(parts[1], date)
-    return `https://tvprofil.com/${parts[0]}/program/?${query}`
-  },
-
-  // --- Headers za testove
-  request: {
-    headers: {
-      'x-requested-with': 'XMLHttpRequest',
-      'referer': 'https://tvprofil.com/tvprogram/',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
-    }
-  },
-
-  parser: function ({ content }) {
-    let programs = []
-    const items = parseItems(content)
-    items.forEach(item => {
-      const $ = cheerio.load(item)
-      $('div.row').each((_, el) => {
-        const $item = $(el)
-        const title = parseTitle($item)
-        const category = parseCategory($item)
-        const start = parseStart($item)
-        const duration = parseDuration($item)
-        const stop = start.add(duration, 's')
-        const icon = parseImage($item)
-
-        programs.push({ title, category, start, stop, icon })
-      })
-    })
-
-    return programs
-  },
-
-  async channels() {
-    // --- Fetch preko Cloudflare Worker za stvarni runtime
-    const axios = require('axios')
-    const countries = {
-      bg: { channelsPath: '/bg', progsPath: 'bg/tv-programa', lang: 'bg' },
-      // dodaj ostale zemlje po potrebi
-    }
-
-    let channels = []
-    for (let country in countries) {
-      const cfg = countries[country]
-      const url = `${WORKER_URL}?url=${encodeURIComponent(`https://tvprofil.com${cfg.channelsPath}/channels/getChannels/`)}`
-      const cb = await axios.get(url).then(r => r.data).catch(() => null)
-      if (!cb) continue
-
-      const [, json] = cb.match(/^cb\((.*)\)$/i) || []
-      if (!json) continue
-      const data = JSON.parse(json)
-
-      data.data.forEach(group => {
-        group.channels.forEach(item => {
-          channels.push({
-            lang: cfg.lang,
-            site_id: `${cfg.progsPath}#${item.urlID}`,
-            xmltv_id: `${item.title.replace(/[ '&]/g, '')}.${country}`,
-            name: item.title
-          })
-        })
-      })
-    }
-
-    return channels
-  }
+const date = dayjs.utc('2025-07-29', 'YYYY-MM-DD').startOf('d')
+const channel = {
+  site_id: 'bg/tv-programa#24kitchen-bg',
+  xmltv_id: '24KitchenBulgaria.bg'
 }
 
-// --- Helper functions ---
-function parseImage($item) { return $item.attr('data-image') || null }
-function parseDuration($item) { return parseInt($item.attr('data-len')) }
-function parseStart($item) { return dayjs.unix(parseInt($item.attr('data-ts'))) }
-function parseCategory($item) { return $item.find('.col:nth-child(2) > small').text() || null }
-function parseTitle($item) {
-  let title = $item.find('.col:nth-child(2) > a').text()
-  title += $item.find('.col:nth-child(2)').clone().children().remove().end().text()
-  return title.replace('®','').trim().replace(/,$/,'')
-}
-function parseItems(content) {
-  let data = (content.match(/^[^(]+\(([\s\S]*)\)$/) || [null,null])[1]
-  if (!data) return []
-  const json = JSON.parse(data)
-  return json?.data?.program ? [json.data.program] : []
-}
-function buildQuery(site_id, date) {
-  const query = { datum: date.format('YYYY-MM-DD'), kanal: site_id }
-  let c = 4, a = query.datum + query.kanal, ua = query.kanal + query.datum
-  ua = ua || 'none'
-  for (let j=0;j<ua.length;j++) c+=ua.charCodeAt(j)
-  let i = a.length, b=2
-  while(i--) b+=(a.charCodeAt(i)+c*2)*i
-  b=b.toString()
-  const lastCharCode = b.charCodeAt(b.length-1)
-  query['callback'] = `tvprogramit${lastCharCode}`
-  query['b'+lastCharCode]=b
-  return new URLSearchParams(query).toString()
-}
+it('can generate valid url', () => {
+  expect(url({ channel, date })).toBe(
+    'https://tvprofil.com/bg/tv-programa/program/?datum=2025-07-29&kanal=24kitchen-bg&callback=tvprogramit48&b48=827670'
+  )
+})
+
+it('can generate valid request headers', () => {
+  expect(request.headers).toMatchObject({
+    'x-requested-with': 'XMLHttpRequest',
+    'referer': 'https://tvprofil.com/tvprogram/',
+    'user-agent': expect.any(String)
+  })
+})
+
+it('can parse response', () => {
+  const content = fs.readFileSync(path.resolve(__dirname, '__data__/content.txt'), 'utf8')
+  const results = parser({ content }).map(p => {
+    p.start = p.start.toJSON()
+    p.stop = p.stop.toJSON()
+    return p
+  })
+
+  expect(results[0]).toMatchObject({
+    title: 'Save with Jamie 1, ep. 2',
+    start: '2025-07-29T05:00:00.000Z',
+    stop: '2025-07-29T06:00:00.000Z'
+  })
+})
+
+it('can handle empty guide', () => {
+  const content = fs.readFileSync(path.resolve(__dirname, '__data__/no_content.txt'), 'utf8')
+  expect(parser({ content })).toMatchObject([])
+})
