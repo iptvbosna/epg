@@ -1,6 +1,5 @@
 const axios = require('axios')
 const dayjs = require('dayjs')
-
 module.exports = {
   site: 'mts.rs',
   days: 2,
@@ -10,11 +9,10 @@ module.exports = {
     )}&pageSize=10000`
   },
   request: {
-    maxContentLength: 10000000 // 10 Mb
+    maxContentLength: 50000000 // 50 Mb
   },
   parser({ content, channel }) {
     const items = parseItems(content, channel)
-
     return items.map(item => {
       return {
         title: item.title,
@@ -31,7 +29,6 @@ module.exports = {
       .get(module.exports.url({ date: dayjs() }))
       .then(r => r.data)
       .catch(console.error)
-
     return data.products.map(channel => ({
       lang: 'bs',
       name: channel.name,
@@ -39,15 +36,12 @@ module.exports = {
     }))
   }
 }
-
 function parseItems(content, channel) {
   try {
     const data = JSON.parse(content)
     if (!data || !Array.isArray(data.products)) return []
-
     const channelData = data.products.find(c => c.code === channel.site_id)
     if (!channelData || !Array.isArray(channelData.programs)) return []
-
     return channelData.programs
   } catch {
     return []
