@@ -1,4 +1,3 @@
-cat > /var/www/html/epg/mts/epg/sites/mts.rs/mts.rs.config.js << 'EOF'
 const axios = require('axios')
 const dayjs = require('dayjs')
 
@@ -97,4 +96,3 @@ function parseItems(content, channel) {
     return []
   }
 }
-EOF
