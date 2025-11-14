@@ -1,5 +1,6 @@
 const cheerio = require('cheerio')
 const dayjs = require('dayjs')
+const WORKER_URL = 'https://red-water-3fc9.seharavip15.workers.dev'
 
 module.exports = {
   site: 'tvprofil.com',
@@ -7,8 +8,9 @@ module.exports = {
   url: function ({ channel, date }) {
     const parts = channel.site_id.split('#')
     const query = buildQuery(parts[1], date)
-
-    return `https://tvprofil.com/${parts[0]}/program/?${query}`
+    const targetUrl = `https://tvprofil.com/${parts[0]}/program/?${query}`
+    
+    return `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`
   },
   request: {
     headers: {
@@ -72,15 +74,13 @@ module.exports = {
       const config = countries[country]
       const lang = config.lang
 
-      const url = `https://tvprofil.com${config.channelsPath}/channels/getChannels/`
+      const targetUrl = `https://tvprofil.com${config.channelsPath}/channels/getChannels/`
+      const url = `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}&callback=cb`
 
       console.log(url)
 
       const cb = await axios
         .get(url, {
-          params: {
-            callback: 'cb'
-          },
           headers: {
             'x-requested-with': 'XMLHttpRequest',
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
@@ -151,7 +151,6 @@ function buildQuery(site_id, date) {
   const query = {
     datum: date.format('YYYY-MM-DD'),
     kanal: site_id
-    // callback: 'cb' // possibly still working
   }
 
   let c = 4
