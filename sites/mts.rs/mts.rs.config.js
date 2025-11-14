@@ -1,48 +1,21 @@
 const axios = require('axios')
 const dayjs = require('dayjs')
-const { SocksProxyAgent } = require('socks-proxy-agent')
-const HttpsProxyAgent = require('https-proxy-agent')
 
-// Lista proxy servera za rotaciju
-const proxies = [
-  'socks5://103.152.112.162:1080',
-  'socks5://168.119.53.93:10000',
-  'http://51.158.68.68:8811',
-  'http://103.152.112.162:80',
-  null // Bez proxy-ja kao backup
-]
-
-let currentProxyIndex = 0
-
-function getProxyAgent() {
-  const proxy = proxies[currentProxyIndex]
-  currentProxyIndex = (currentProxyIndex + 1) % proxies.length
-  
-  if (!proxy) return {}
-  
-  if (proxy.startsWith('socks')) {
-    const agent = new SocksProxyAgent(proxy)
-    return { httpAgent: agent, httpsAgent: agent }
-  } else {
-    const agent = new HttpsProxyAgent(proxy)
-    return { httpsAgent: agent }
-  }
-}
+const WORKER_URL = 'https://red-water-3fc9.seharavip15.workers.dev'
 
 module.exports = {
   site: 'mts.rs',
   days: 2,
   url({ date }) {
-    return `https://mts.rs/hybris/ecommerce/b2c/v1/products/search?sort=pozicija-rastuce&searchQueryContext=CHANNEL_PROGRAM&query=:pozicija-rastuce:tip-kanala-radio:TV kanali:channelProgramDates:${date.format(
+    const targetUrl = `https://mts.rs/hybris/ecommerce/b2c/v1/products/search?sort=pozicija-rastuce&searchQueryContext=CHANNEL_PROGRAM&query=:pozicija-rastuce:tip-kanala-radio:TV kanali:channelProgramDates:${date.format(
       'YYYY-MM-DD'
     )}&pageSize=10000`
+    
+    return `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`
   },
   request: {
     maxContentLength: 50000000,
-    timeout: 30000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    }
+    timeout: 30000
   },
   parser({ content, channel }) {
     const items = parseItems(content, channel)
@@ -58,11 +31,8 @@ module.exports = {
     })
   },
   async channels() {
-    const proxyConfig = getProxyAgent()
-    const config = { ...module.exports.request, ...proxyConfig }
-    
     const data = await axios
-      .get(module.exports.url({ date: dayjs() }), config)
+      .get(module.exports.url({ date: dayjs() }))
       .then(r => r.data)
       .catch(err => {
         console.error('Channel fetch error:', err.message)
