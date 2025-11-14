@@ -7,7 +7,7 @@ module.exports = {
   site: 'tvprofil.com',
   days: 2,
 
-  // Funkcija za testove vraća direktan URL
+  // Funkcija za testove i runtime
   url({ channel, date, useWorker = false }) {
     const parts = channel.site_id.split('#');
     const query = buildQuery(parts[1], date);
@@ -31,11 +31,12 @@ module.exports = {
       const $ = cheerio.load(item);
       $('div.row').each((_, el) => {
         const $item = $(el);
+        const start = parseStart($item);
         programs.push({
           title: parseTitle($item),
           category: parseCategory($item),
-          start: parseStart($item),
-          stop: parseStart($item).add(parseDuration($item), 's'),
+          start,
+          stop: start.add(parseDuration($item), 's'),
           icon: parseImage($item)
         });
       });
@@ -45,11 +46,13 @@ module.exports = {
   },
 
   async channels() {
-    // Runtime fetch preko Worker-a
     const axios = require('axios');
-    const countries = { bg: { channelsPath: '/bg', progsPath: 'bg/tv-programa', lang: 'bg' } };
-    const channels = [];
+    const countries = {
+      bg: { channelsPath: '/bg', progsPath: 'bg/tv-programa', lang: 'bg' },
+      // Dodaj ostale zemlje po potrebi
+    };
 
+    const channels = [];
     for (const country in countries) {
       const cfg = countries[country];
       const url = `${WORKER_URL}?url=${encodeURIComponent(`https://tvprofil.com${cfg.channelsPath}/channels/getChannels/`)}`;
