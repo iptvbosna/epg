@@ -1,17 +1,8 @@
 const axios = require('axios')
 const dayjs = require('dayjs')
-const HttpsProxyAgent = require('https-proxy-agent')
+const { SocksProxyAgent } = require('socks-proxy-agent')
 
-// PROBAJ OVE PROXY SERVERE JEDAN PO JEDAN:
-const proxies = [
-  'http://51.158.68.133:8811',           // Proxy 1
-  'http://proxy.server.com:3128',        // Proxy 2
-  'http://51.158.68.68:8811',            // Proxy 3
-  'http://168.119.53.93:10000',          // Proxy 4
-  'http://103.152.112.162:80'            // Proxy 5
-]
-
-const proxy = proxies[0] // <--- MIJENJAJ BROJ (0,1,2,3,4) I TESTAJ
+const proxy = 'socks5://51.158.68.133:1080' // SOCKS5 proxy
 
 module.exports = {
   site: 'mts.rs',
@@ -23,11 +14,9 @@ module.exports = {
   },
   request: {
     maxContentLength: 50000000,
-    httpsAgent: new HttpsProxyAgent(proxy),
-    timeout: 30000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
+    httpAgent: new SocksProxyAgent(proxy),
+    httpsAgent: new SocksProxyAgent(proxy),
+    timeout: 30000
   },
   parser({ content, channel }) {
     const items = parseItems(content, channel)
