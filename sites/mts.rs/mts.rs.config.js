@@ -1,3 +1,4 @@
+cat > /var/www/html/epg/mts/epg/sites/mts.rs/mts.rs.config.js << 'EOF'
 const axios = require('axios')
 const dayjs = require('dayjs')
 
@@ -10,8 +11,12 @@ module.exports = {
     )}&pageSize=10000`
   },
   request: {
-    maxContentLength: 50000000, // Povećano sa 10MB na 50MB
-    timeout: 180000, // 3 minuta timeout
+    maxContentLength: 50000000,
+    timeout: 180000,
+    proxy: {
+      host: '185.162.235.244',
+      port: 3128
+    },
     headers: {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': 'application/json, text/plain, */*',
@@ -92,23 +97,4 @@ function parseItems(content, channel) {
     return []
   }
 }
-
-request: {
-    maxContentLength: 50000000,
-    proxy: {
-      host: '185.162.235.244',  // Free Serbian proxy
-      port: 3128
-    },
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-  },request: {
-    maxContentLength: 50000000,
-    proxy: {
-      host: '185.162.235.244',  // Free Serbian proxy
-      port: 3128
-    },
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-  },dodaj ti ovo u config
+EOF
