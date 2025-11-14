@@ -1,8 +1,33 @@
 const axios = require('axios')
 const dayjs = require('dayjs')
 const { SocksProxyAgent } = require('socks-proxy-agent')
+const HttpsProxyAgent = require('https-proxy-agent')
 
-const proxy = 'socks5://51.158.68.133:1080' // SOCKS5 proxy
+// Lista proxy servera za rotaciju
+const proxies = [
+  'socks5://103.152.112.162:1080',
+  'socks5://168.119.53.93:10000',
+  'http://51.158.68.68:8811',
+  'http://103.152.112.162:80',
+  null // Bez proxy-ja kao backup
+]
+
+let currentProxyIndex = 0
+
+function getProxyAgent() {
+  const proxy = proxies[currentProxyIndex]
+  currentProxyIndex = (currentProxyIndex + 1) % proxies.length
+  
+  if (!proxy) return {}
+  
+  if (proxy.startsWith('socks')) {
+    const agent = new SocksProxyAgent(proxy)
+    return { httpAgent: agent, httpsAgent: agent }
+  } else {
+    const agent = new HttpsProxyAgent(proxy)
+    return { httpsAgent: agent }
+  }
+}
 
 module.exports = {
   site: 'mts.rs',
@@ -14,9 +39,10 @@ module.exports = {
   },
   request: {
     maxContentLength: 50000000,
-    httpAgent: new SocksProxyAgent(proxy),
-    httpsAgent: new SocksProxyAgent(proxy),
-    timeout: 30000
+    timeout: 30000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
   },
   parser({ content, channel }) {
     const items = parseItems(content, channel)
@@ -32,8 +58,11 @@ module.exports = {
     })
   },
   async channels() {
+    const proxyConfig = getProxyAgent()
+    const config = { ...module.exports.request, ...proxyConfig }
+    
     const data = await axios
-      .get(module.exports.url({ date: dayjs() }), module.exports.request)
+      .get(module.exports.url({ date: dayjs() }), config)
       .then(r => r.data)
       .catch(err => {
         console.error('Channel fetch error:', err.message)
