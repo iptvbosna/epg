@@ -1,61 +1,32 @@
+// tv.magenta.at.config.js
+// Adapted to use Cloudflare Worker proxy like mts.rs config, simplified for single fetch per channel/day
+
 const axios = require('axios')
-const crypto = require('crypto')
 const dayjs = require('dayjs')
-
 const API_ENDPOINT = 'https://tv-at-prod.yo-digital.com/at-bifrost'
-
-const headers = {
-  'Device-Id': crypto.randomUUID(),
-  app_key: 'CTnKA63ruKM0JM1doxAXwwyQLLmQiEiy',
-  app_version: '02.0.1260',
-  'X-User-Agent': 'web|web|Firefox-120|02.0.1260|1',
-  'x-request-tracking-id': crypto.randomUUID()
-}
+const WORKER_URL = 'https://sehara-magentaat.seharavip15.workers.dev' // Your deployed Worker URL
 
 module.exports = {
   site: 'tv.magenta.at',
   days: 2,
   request: {
-    headers,
-    cache: {
-      ttl: 60 * 60 * 1000 // 1 hour
-    }
+    maxContentLength: 50000000,
+    timeout: 30000
   },
   url: function ({ channel, date }) {
-    return `${API_ENDPOINT}/epg/channel/schedules/v2?station_ids=${
+    const targetUrl = `${API_ENDPOINT}/epg/channel/schedules/v2?station_ids=${
       channel.site_id
-    }&date=${date.format('YYYY-MM-DD')}&hour_offset=${date.format('H')}&hour_range=3&natco_code=at`
+    }&date=${date.format('YYYY-MM-DD')}&hour_offset=0&hour_range=24&natco_code=at` // Full day in one call (0-23h)
+    return `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`
   },
-  async parser({ content, channel, date }) {
+  parser({ content, channel, date }) { // Simplified: no extra hourly fetches
     let programs = []
     if (!content) return programs
-
     let items = parseItems(JSON.parse(content), channel)
     if (!items.length) return programs
-
-    const promises = [3, 6, 9, 12, 15, 18, 21].map(i =>
-      axios.get(
-        `${API_ENDPOINT}/epg/channel/schedules/v2?station_ids=${channel.site_id}&date=${date.format(
-          'YYYY-MM-DD'
-        )}&hour_offset=${i}&hour_range=3&natco_code=at`,
-        { headers }
-      )
-    )
-
-    await Promise.allSettled(promises)
-      .then(results => {
-        results.forEach(r => {
-          if (r.status === 'fulfilled') {
-            const parsed = parseItems(r.value.data, channel)
-
-            items = items.concat(parsed)
-          }
-        })
-      })
-      .catch(console.error)
-
+    // Process items synchronously or await details in loop
     for (let item of items) {
-      const detail = await loadProgramDetails(item)
+      const detail = loadProgramDetails(item) // Make sync if possible, but keep async
       programs.push({
         title: item.description,
         description: parseDescription(detail),
@@ -71,33 +42,36 @@ module.exports = {
         stop: parseStop(item)
       })
     }
-
     return programs
   },
   async channels() {
+    const targetUrl = `${API_ENDPOINT}/epg/channel?natco_code=at`
     const data = await axios
-      .get(`${API_ENDPOINT}/epg/channel?natco_code=at`, { headers })
+      .get(`${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`)
       .then(r => r.data)
-      .catch(console.log)
-
-    return data.channels.map(item => {
-      return {
-        lang: 'de',
-        site_id: item.station_id,
-        name: item.title
-      }
-    })
+      .catch(err => {
+        console.error('Channel fetch error:', err.message)
+        return null
+      })
+   
+    if (!data || !data.channels) return []
+   
+    return Object.values(data.channels).map(item => ({ // Like MTS: map from products/channels
+      lang: 'de',
+      name: item.title,
+      site_id: item.station_id
+    }))
   }
 }
 
+// Make loadProgramDetails sync if no await needed, but keep async for safety
 async function loadProgramDetails(item) {
   if (!item.program_id) return {}
-  const url = `${API_ENDPOINT}/details/series/${item.program_id}?natco_code=at`
+  const targetUrl = `${API_ENDPOINT}/details/series/${item.program_id}?natco_code=at`
   const data = await axios
-    .get(url, { headers })
+    .get(`${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`)
     .then(r => r.data)
     .catch(console.log)
-
   return data || {}
 }
 
@@ -117,7 +91,7 @@ function parseItems(data, channel) {
   if (!data || !data.channels) return []
   const channelData = data.channels[channel.site_id]
   if (!channelData) return []
-  return channelData
+  return channelData // Assumes array of programs
 }
 
 function parseCategory(item) {
