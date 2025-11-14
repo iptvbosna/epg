@@ -1,5 +1,6 @@
 const cheerio = require('cheerio')
 const dayjs = require('dayjs')
+const axios = require('axios')
 const WORKER_URL = 'https://red-water-3fc9.seharavip15.workers.dev'
 
 module.exports = {
@@ -18,7 +19,8 @@ module.exports = {
       'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
       'referer': 'https://tvprofil.com/tvprogram/',
       'accept': 'text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01'
-    }
+    },
+    timeout: 30000
   },
   parser: function ({ content }) {
     let programs = []
@@ -41,8 +43,6 @@ module.exports = {
     return programs
   },
   async channels() {
-    const axios = require('axios')
-
     // prettier-ignore
     const countries = {
       al: { channelsPath: '/al', progsPath: 'al/programacioni', lang: 'sq' },
@@ -70,14 +70,16 @@ module.exports = {
     }
 
     let channels = []
+    
     for (let country in countries) {
       const config = countries[country]
       const lang = config.lang
 
+      // Target URL bez callback parametra
       const targetUrl = `https://tvprofil.com${config.channelsPath}/channels/getChannels/`
-      const url = `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}&callback=cb`
+      const url = `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`
 
-      console.log(url)
+      console.log(`Fetching channels for ${country}...`)
 
       const cb = await axios
         .get(url, {
@@ -86,28 +88,59 @@ module.exports = {
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36',
             'referer': 'https://tvprofil.com/programtv/',
             'accept': 'text/javascript, application/javascript, application/ecmascript, application/x-ecmascript, */*; q=0.01',
-          }
+          },
+          timeout: 30000
         })
         .then(r => r.data)
         .catch(err => {
-          console.error(err.message)
+          console.error(`Error fetching ${country}:`, err.message)
+          return null
         })
 
       if (!cb) continue
 
-      const [, json] = cb.match(/^cb\((.*)\)$/i)
-      const data = JSON.parse(json)
-
-      data.data.forEach(group => {
-        group.channels.forEach(item => {
-          channels.push({
-            lang,
-            site_id: `${config.progsPath}#${item.urlID}`,
-            xmltv_id: `${item.title.replaceAll(/[ '&]/g, '')}.${country}`,
-            name: item.title
-          })
-        })
-      })
+      try {
+        // Pokušaj parsirati kao JSONP callback
+        const jsonpMatch = cb.match(/^cb\((.*)\)$/i)
+        if (jsonpMatch) {
+          const json = jsonpMatch[1]
+          const data = JSON.parse(json)
+          
+          if (data && data.data) {
+            data.data.forEach(group => {
+              if (group.channels) {
+                group.channels.forEach(item => {
+                  channels.push({
+                    lang,
+                    site_id: `${config.progsPath}#${item.urlID}`,
+                    xmltv_id: `${item.title.replaceAll(/[ '&]/g, '')}.${country}`,
+                    name: item.title
+                  })
+                })
+              }
+            })
+          }
+        } else {
+          // Možda je već JSON
+          const data = JSON.parse(cb)
+          if (data && data.data) {
+            data.data.forEach(group => {
+              if (group.channels) {
+                group.channels.forEach(item => {
+                  channels.push({
+                    lang,
+                    site_id: `${config.progsPath}#${item.urlID}`,
+                    xmltv_id: `${item.title.replaceAll(/[ '&]/g, '')}.${country}`,
+                    name: item.title
+                  })
+                })
+              }
+            })
+          }
+        }
+      } catch (parseErr) {
+        console.error(`Parse error for ${country}:`, parseErr.message)
+      }
     }
 
     return channels
@@ -184,4 +217,3 @@ function buildQuery(site_id, date) {
 
   return new URLSearchParams(query).toString()
 }
-
