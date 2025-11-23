@@ -34,6 +34,7 @@ module.exports = {
     let browser
     try {
       browser = await puppeteer.launch({
+        executablePath: '/usr/bin/chromium-browser',
         headless: true,
         args: [
           '--no-sandbox',
