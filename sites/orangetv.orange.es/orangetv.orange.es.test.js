@@ -17,29 +17,40 @@ const channel = {
   xmltv_id: 'La1.es'
 }
 
+// Worker URL iz config-a
+const WORKER_URL = 'https://orange-es.seharavip15.workers.dev'
+
 axios.get.mockImplementation(url => {
   const result = {}
+  
+  // Mapiraj Worker URL-ove na lokalne data fajlove
   const urls = {
-    'https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_1.json':
-      'data1.json',
-    'https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_2.json':
-      'data2.json',
-    'https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_3.json':
-      'data3.json',
+    [`${WORKER_URL}?url=${encodeURIComponent('https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_1.json')}`]: 'data1.json',
+    [`${WORKER_URL}?url=${encodeURIComponent('https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_2.json')}`]: 'data2.json',
+    [`${WORKER_URL}?url=${encodeURIComponent('https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_3.json')}`]: 'data3.json',
   }
+  
   if (urls[url] !== undefined) {
     result.data = fs.readFileSync(path.join(__dirname, '__data__', urls[url])).toString()
     if (!urls[url].startsWith('data1')) {
       result.data = JSON.parse(result.data)
     }
   }
-
+  
   return Promise.resolve(result)
 })
 
 it('can generate valid url', () => {
-  expect(url({ date })).toBe(
-    'https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_1.json'
+  const generatedUrl = url({ date })
+  
+  // Provjeri da URL sadrži Worker i enkodiran originalni URL
+  expect(generatedUrl).toContain(WORKER_URL)
+  expect(generatedUrl).toContain('https%3A%2F%2Fepg.orangetv.orange.es')
+  expect(generatedUrl).toContain('20250112_8h_1.json')
+  
+  // Ili provjeri kompletan URL
+  expect(generatedUrl).toBe(
+    `${WORKER_URL}?url=${encodeURIComponent('https://epg.orangetv.orange.es/epg/Smartphone_Android/1_PRO/20250112_8h_1.json')}`
   )
 })
 
@@ -50,7 +61,7 @@ it('can parse response', async () => {
     p.stop = p.stop.toJSON()
     return p
   })
-
+  
   expect(results.length).toBe(18)
   expect(results[0]).toMatchObject({
     start: '2025-01-11T22:55:00.000Z',
@@ -81,5 +92,5 @@ it('can handle empty guide', async () => {
     channel,
     content: '{}'
   })
-  expect(result).toMatchObject({})
+  expect(result).toMatchObject([])
 })
