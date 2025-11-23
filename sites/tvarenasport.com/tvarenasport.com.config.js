@@ -74,10 +74,11 @@ module.exports = {
           const isLive = $s.find('.blob-text').text().trim().toLowerCase() === 'uživo'
           const title = (isLive ? '(Uživo) ' : '') + (league ? `${league}: ${titleText}` : titleText)
           
-          programs.push({ title, category: sport, start })
+          programs.push({ title, category: sport, start, stop: null })
         })
       })
       
+      // VAŽNO: Postavi stop vrijeme za svaki program
       programs.forEach((e, i) => {
         e.stop = programs[i + 1] ? programs[i + 1].start : dayjs.tz(`${expectedDate} 23:59`, 'YYYY-MM-DD HH:mm', TIMEZONE)
       })
