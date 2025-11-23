@@ -66,7 +66,7 @@ module.exports = {
       await page.waitForSelector('.tv-scheme-chanel', { timeout: 30000 })
       
       // Sačekaj da se JavaScript izvrši
-      await page.waitForTimeout(5000)
+      await new Promise(resolve => setTimeout(resolve, 5000))
       
       const html = await page.content()
       
@@ -163,7 +163,7 @@ module.exports = {
       })
       
       await page.waitForSelector('.tv-scheme-chanel', { timeout: 30000 })
-      await page.waitForTimeout(3000)
+      await new Promise(resolve => setTimeout(resolve, 3000))
       
       const html = await page.content()
       const cheerio = require('cheerio')
