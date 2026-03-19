@@ -48,9 +48,14 @@ module.exports = {
 
     if (!queue.length) return programs
 
-    const chunkSize = 5
+    // SMANJEN CHUNK SIZE SA 5 NA 1
+    const chunkSize = 1
     for (let i = 0; i < queue.length; i += chunkSize) {
       const chunk = queue.slice(i, i + chunkSize)
+      
+      // PAUZA OD 1 SEKUNDE ZA ZAOBILAŽENJE AWS WAF BLOKADA
+      await new Promise(r => setTimeout(r, 1000));
+
       const results = await Promise.allSettled(
         chunk.map(href => {
           const fullUrl = href.startsWith('http')
@@ -66,6 +71,7 @@ module.exports = {
           debug(`Failed: ${result.reason}`)
           return
         }
+        
         const res = result.value.data
         if (!res) return
 
