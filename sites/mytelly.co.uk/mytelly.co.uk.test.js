@@ -17,9 +17,9 @@ const channel = {
   xmltv_id: 'BBCOneLondon.uk'
 }
 
-axios.get.mockImplementation(url => {
+axios.get.mockImplementation(reqUrl => {
   if (
-    url ===
+    reqUrl ===
     'https://www.mytelly.co.uk/tv-guide/listings/programme?cid=713&pid=1906433&tm=2024-12-07+00%3A00%3A00'
   ) {
     return Promise.resolve({
@@ -27,7 +27,7 @@ axios.get.mockImplementation(url => {
     })
   }
   if (
-    url ===
+    reqUrl ===
     'https://www.mytelly.co.uk/tv-guide/listings/programme?cid=713&pid=5656624&tm=2024-12-07+23%3A35%3A00'
   ) {
     return Promise.resolve({
@@ -67,7 +67,7 @@ it('can parse response', async () => {
     start: '2024-12-07T23:35:00.000Z',
     stop: '2024-12-08T00:40:00.000Z',
     title: 'The Rap Game UK',
-    subTitle: 'Past and Pressure Season 6, Episode 5',
+    subTitle: 'Past and Pressure',
     description:
       'The artists are tasked with writing a song about their heritage. For some, the pressure of the competition proves too much for them to match. In their final challenge, they are put face to face with industry experts who grill them about their plans after the competition. Some impress, while others leave the mentors confused',
     image:
