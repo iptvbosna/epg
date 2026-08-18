@@ -1,24 +1,20 @@
 const axios = require('axios')
 const dayjs = require('dayjs')
 
-const WORKER_URL = 'https://red-water-3fc9.seharavip15.workers.dev'
-
 module.exports = {
   site: 'mts.rs',
   days: 2,
   url({ date }) {
-    const targetUrl = `https://mts.rs/hybris/ecommerce/b2c/v1/products/search?sort=pozicija-rastuce&searchQueryContext=CHANNEL_PROGRAM&query=:pozicija-rastuce:tip-kanala-radio:TV kanali:channelProgramDates:${date.format(
+    return `https://mts.rs/hybris/ecommerce/b2c/v1/products/search?sort=pozicija-rastuce&searchQueryContext=CHANNEL_PROGRAM&query=:pozicija-rastuce:tip-kanala-radio:TV kanali:channelProgramDates:${date.format(
       'YYYY-MM-DD'
     )}&pageSize=10000`
-    
-    return `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`
   },
   request: {
-    maxContentLength: 50000000,
-    timeout: 30000
+    maxContentLength: 10000000 // 10 Mb
   },
   parser({ content, channel }) {
     const items = parseItems(content, channel)
+
     return items.map(item => {
       return {
         title: item.title,
@@ -34,13 +30,8 @@ module.exports = {
     const data = await axios
       .get(module.exports.url({ date: dayjs() }))
       .then(r => r.data)
-      .catch(err => {
-        console.error('Channel fetch error:', err.message)
-        return null
-      })
-    
-    if (!data || !data.products) return []
-    
+      .catch(console.error)
+
     return data.products.map(channel => ({
       lang: 'bs',
       name: channel.name,
@@ -53,8 +44,10 @@ function parseItems(content, channel) {
   try {
     const data = JSON.parse(content)
     if (!data || !Array.isArray(data.products)) return []
+
     const channelData = data.products.find(c => c.code === channel.site_id)
     if (!channelData || !Array.isArray(channelData.programs)) return []
+
     return channelData.programs
   } catch {
     return []
