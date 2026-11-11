@@ -3,19 +3,10 @@ const dayjs = require('dayjs')
 const utc = require('dayjs/plugin/utc')
 const timezone = require('dayjs/plugin/timezone')
 const customParseFormat = require('dayjs/plugin/customParseFormat')
-const axios = require('axios')
-const debug = require('debug')('site:mytelly.co.uk')
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 dayjs.extend(customParseFormat)
-
-const tz = 'Europe/London'
-const WORKER_URL = 'https://mytelly.seharavip15.workers.dev'
-
-function proxyUrl(targetUrl) {
-  return `${WORKER_URL}?url=${encodeURIComponent(targetUrl)}`
-}
 
 module.exports = {
   site: 'mytelly.co.uk',
@@ -27,206 +18,123 @@ module.exports = {
     }
   },
   url({ date, channel }) {
-    return proxyUrl(
-      `https://www.mytelly.co.uk/tv-guide/listings/channel/${channel.site_id}.html?dt=${date.format('YYYY-MM-DD')}`
-    )
+    return `https://www.mytelly.co.uk/tv-guide/listings/channel/${
+      channel.site_id
+    }.html?dt=${date.format('YYYY-MM-DD')}`
   },
   async parser({ content, date }) {
     const programs = []
 
-    if (!content) return programs
-
-    const $ = cheerio.load(content)
-    const rows = $('table.table > tbody > tr').toArray()
-    if (!rows.length) return programs
-
-    const queue = []
-    rows.forEach(el => {
-      const href = $(el).find('td:eq(1) h5 a').attr('href')
-      if (href) queue.push(href)
+    const items = parseItems(content)
+    items.forEach(item => {
+      const $item = cheerio.load(item)
+      const td = $item('td:eq(1)')
+      const title = td.find('h5 a')
+      const subtitle = td.find('h6')
+      const time = $item('td:eq(0)')
+      let start = parseTime(date, time.text().trim())
+      const prev = programs[programs.length - 1]
+      if (prev) {
+        if (start.isBefore(prev.start)) {
+          start = start.add(1, 'd')
+          date = date.add(1, 'd')
+        }
+        prev.stop = start
+      }
+      const stop = start.add(30, 'm')
+      programs.push({
+        title: parseText(title),
+        subTitle: parseText(subtitle),
+        start,
+        stop
+      })
     })
 
-    if (!queue.length) return programs
-
-    // SMANJEN CHUNK SIZE SA 5 NA 1
-    const chunkSize = 1
-    for (let i = 0; i < queue.length; i += chunkSize) {
-      const chunk = queue.slice(i, i + chunkSize)
-      
-      // PAUZA OD 1 SEKUNDE ZA ZAOBILAŽENJE AWS WAF BLOKADA
-      await new Promise(r => setTimeout(r, 1000));
-
-      const results = await Promise.allSettled(
-        chunk.map(href => {
-          const fullUrl = href.startsWith('http')
-            ? href
-            : `https://www.mytelly.co.uk${href}`
-          debug(`Fetching: ${fullUrl}`)
-          return axios.get(proxyUrl(fullUrl))
-        })
-      )
-
-      results.forEach(result => {
-        if (result.status !== 'fulfilled') {
-          debug(`Failed: ${result.reason}`)
-          return
-        }
-        
-        const res = result.value.data
-        if (!res) return
-
-        const $p = cheerio.load(res)
-
-        const timeText = $p('center > h5 > b').text().trim()
-        if (!timeText) return
-
-        const title = parseText($p('.inner-heading.sub h2'))
-        if (!title) return
-
-        const subTitleRaw = parseText($p('.tab-pane > h5 > strong'))
-        const description = parseText($p('.tab-pane > .tvbody > p'))
-        const image = $p('.program-media-image img').attr('src')
-        const category = $p('.schedule-attributes-genres span')
-          .toArray()
-          .map(el => $p(el).text().trim())
-          .filter(Boolean)
-
-        const casts = $p('.single-cast-head:not([id])')
-          .toArray()
-          .map(el => {
-            const name = parseText($p(el).find('a'))
-            const match = $p(el).text().match(/\((.*?)\)/)
-            const role = match ? match[1].trim() : null
-            return { name, role }
-          })
-          .filter(c => c.name)
-
-        const [start, stop] = parseStartStop(date, timeText)
-
-        let subTitle = null
-        let season, episode
-
-        if (subTitleRaw) {
-          const cleaned = subTitleRaw.replace(/\s+/g, ' ').trim()
-          const seMatch = cleaned.match(/Season\s+(\d+),\s+Episode\s+(\d+)/i)
-          if (seMatch) {
-            season = parseInt(seMatch[1])
-            episode = parseInt(seMatch[2])
-            subTitle = cleaned.replace(/Season\s+\d+,\s+Episode\s+\d+/i, '').trim() || null
-          } else {
-            subTitle = cleaned
-          }
-        }
-
-        programs.push({
-          title,
-          subTitle,
-          description,
-          image,
-          category,
-          season,
-          episode,
-          actor: casts.filter(c => c.role === 'Actor').map(c => c.name),
-          director: casts.filter(c => c.role === 'Director').map(c => c.name),
-          presenter: casts.filter(c => c.role === 'Presenter').map(c => c.name),
-          start,
-          stop
-        })
-      })
-    }
-
-    programs.sort((a, b) => a.start.valueOf() - b.start.valueOf())
     return programs
   },
   async channels() {
+    const doFetch = require('@ntlab/sfetch')
     const channels = {}
-
-    try {
-      const formRes = await axios.get(proxyUrl('https://www.mytelly.co.uk/getform'))
-      const $ = cheerio.load(formRes.data)
-      const providers = $('#guide_provider option')
-        .toArray()
-        .map(el => $(el).attr('value'))
-        .filter(Boolean)
-
-      const regionResults = await Promise.all(
-        providers.map(provider =>
-          axios
-            .get(proxyUrl(`https://www.mytelly.co.uk/getregions?provider=${encodeURIComponent(provider)}`))
-            .then(res => ({ provider, regions: res.data }))
-            .catch(() => null)
-        )
-      )
-
-      const now = dayjs()
-      const schedulePromises = []
-
-      for (const result of regionResults) {
-        if (!result || !result.regions || typeof result.regions !== 'object') continue
-        for (const r of Object.values(result.regions)) {
-          const params = new URLSearchParams({
-            provider: result.provider,
+    const queues = [{ t: 'p', url: 'https://www.mytelly.co.uk/getform', params: this.request }]
+    await doFetch(queues, (queue, res) => {
+      // process form -> provider
+      if (queue.t === 'p') {
+        const $ = cheerio.load(res)
+        $('#guide_provider option')
+          .toArray()
+          .forEach(el => {
+            const opt = $(el)
+            const provider = opt.attr('value')
+            queues.push({
+              t: 'r',
+              url: 'https://www.mytelly.co.uk/getregions',
+              params: { ...this.request, provider }
+            })
+          })
+      }
+      // process provider -> region
+      if (queue.t === 'r') {
+        const now = dayjs()
+        for (const r of Object.values(res)) {
+          const params = {
+            provider: queue.params.provider,
             region: r.title,
             TVperiod: 'Night',
             date: now.format('YYYY-MM-DD'),
             st: 0,
             u_time: now.format('HHmm'),
             is_mobile: 1
+          }
+          queues.push({
+            t: 's',
+            method: 'post',
+            url: 'https://www.mytelly.co.uk/tv-guide/schedule',
+            params: { ...this.request, data: params }
           })
-          schedulePromises.push(
-            axios
-              .post(
-                proxyUrl('https://www.mytelly.co.uk/tv-guide/schedule'),
-                params.toString(),
-                { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-              )
-              .then(res => res.data)
-              .catch(() => null)
-          )
         }
       }
-
-      const scheduleResults = await Promise.all(schedulePromises)
-
-      for (const html of scheduleResults) {
-        if (!html) continue
-        const $s = cheerio.load(html)
-        $s('.channelname').each((i, el) => {
-          const name = $s(el).find('center > a:eq(1)').text().trim()
-          const url = $s(el).find('center > a:eq(1)').attr('href')
-          if (!url) return
-          const match = url.match(/\/(\d+)\/(.*)\.html$/)
-          if (!match) return
-          const [, number, slug] = match
+      // process schedule -> channels
+      if (queue.t === 's') {
+        const $ = cheerio.load(res)
+        $('.channelname').each((i, el) => {
+          const name = $(el).find('center > a:eq(1)').text()
+          const url = $(el).find('center > a:eq(1)').attr('href')
+          const [, number, slug] = url.match(/\/(\d+)\/(.*)\.html$/)
           const site_id = `${number}/${slug}`
-          if (!channels[site_id]) {
-            channels[site_id] = { lang: 'en', site_id, name }
+          if (channels[site_id] === undefined) {
+            channels[site_id] = {
+              lang: 'en',
+              site_id,
+              name
+            }
           }
         })
       }
-    } catch (err) {
-      debug(`channels() error: ${err.message}`)
-    }
+    })
 
     return Object.values(channels)
   }
 }
 
-function parseStartStop(date, time) {
-  const [s, e] = time.split(' - ')
-  const start = parseTime(date, s.trim())
-  let stop = parseTime(date, e.trim())
-  if (stop.isBefore(start)) stop = stop.add(1, 'd')
-  return [start, stop]
+function parseItems(content) {
+  const $ = cheerio.load(content)
+
+  return $('table.table > tbody > tr').toArray()
 }
 
 function parseTime(date, time) {
-  return dayjs.tz(`${date.format('YYYY-MM-DD')} ${time}`, 'YYYY-MM-DD h:mm a', tz)
+  return dayjs.tz(`${date.format('YYYY-MM-DD')} ${time}`, 'YYYY-MM-DD H:mm a', 'Europe/London')
 }
 
 function parseText($item) {
-  if (!$item || !$item.text) return ''
   let text = $item.text().replace(/\t/g, '').replace(/\n/g, ' ').trim()
-  while (text.includes('  ')) text = text.replace(/  /g, ' ')
+  while (true) {
+    if (text.match(/\s\s/)) {
+      text = text.replace(/\s\s/g, ' ')
+      continue
+    }
+    break
+  }
+
   return text
 }
